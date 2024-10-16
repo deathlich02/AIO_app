@@ -72,7 +72,7 @@ def summarize_text(transcript):
    with open('key.txt', 'r') as f:
         GOOGLE_API_KEY = f.read()
         f.close()
-    genai.configure(api_key = 'AIzaSyA4IXURlZnF7yhZlu0zBL8PjOZD4vw-1kY')
+    genai.configure(api_key = <key_here>)
     model = genai.GenerativeModel('gemini-1.5-flash')
     prompt = f"Write notes on the following lecture:\\n{transcript}"
     response = model.generate_content(prompt)
