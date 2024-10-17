@@ -27,7 +27,6 @@ class YouTubeSummaryScreen extends StatefulWidget {
   const YouTubeSummaryScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _YouTubeSummaryScreenState createState() => _YouTubeSummaryScreenState();
 }
 
@@ -35,8 +34,15 @@ class _YouTubeSummaryScreenState extends State<YouTubeSummaryScreen> {
   final TextEditingController _controller = TextEditingController();
   String _summary = "";
   List<String> _keyframes = [];
+  bool _isLoading = false;
 
   Future<void> _fetchSummaryAndKeyframes(String url) async {
+    setState(() {
+      _isLoading = true;
+      _summary = "";
+      _keyframes = [];
+    });
+
     final response = await http.post(
       Uri.parse('http://127.0.0.1:5000/process_video'),
       body: json.encode({'url': url}),
@@ -52,6 +58,10 @@ class _YouTubeSummaryScreenState extends State<YouTubeSummaryScreen> {
     } else {
       throw Exception('Failed to load summary and keyframes');
     }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
@@ -71,7 +81,7 @@ class _YouTubeSummaryScreenState extends State<YouTubeSummaryScreen> {
             decoration: const BoxDecoration(
               image: DecorationImage(
                 image: AssetImage(
-                    'assets/backgroung.jpg'), // Add a background image here
+                    'assets/backgroung.jpg'), // Add your background image here
                 fit: BoxFit.cover,
               ),
             ),
@@ -112,7 +122,9 @@ class _YouTubeSummaryScreenState extends State<YouTubeSummaryScreen> {
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    _fetchSummaryAndKeyframes(_controller.text);
+                    if (_controller.text.isNotEmpty) {
+                      _fetchSummaryAndKeyframes(_controller.text);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromARGB(
@@ -131,86 +143,98 @@ class _YouTubeSummaryScreenState extends State<YouTubeSummaryScreen> {
                   ),
                 ),
                 const SizedBox(height: 30),
-                _summary.isNotEmpty
-                    ? Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Summary',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color: Colors.white),
-                              ),
-                              const SizedBox(height: 10),
-                              Container(
-                                padding: const EdgeInsets.all(15),
-                                decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.grey.withOpacity(0.2),
-                                      spreadRadius: 3,
-                                      blurRadius: 5,
-                                      offset: const Offset(0, 2),
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _summary.isNotEmpty
+                        ? Expanded(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Summary',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: Colors.white,
                                     ),
-                                  ],
-                                ),
-                                child: Text(
-                                  _summary,
-                                  style: const TextStyle(
-                                      fontSize: 16, color: Colors.white),
-                                ),
-                              ),
-                              const SizedBox(height: 30),
-                              const Text(
-                                'Keyframes',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color: Colors.white),
-                              ),
-                              const SizedBox(height: 10),
-                              _keyframes.isNotEmpty
-                                  ? SizedBox(
-                                      height: 150,
-                                      child: ListView.builder(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: _keyframes.length,
-                                        itemBuilder: (context, index) {
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                                right: 10),
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              child: Image.network(
-                                                  _keyframes[index],
-                                                  width: 150,
-                                                  fit: BoxFit.cover),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Image.asset(
-                                          'assets/placeholder.jpg',
-                                          width: 200), // Placeholder image
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    padding: const EdgeInsets.all(15),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.grey.withOpacity(0.2),
+                                          spreadRadius: 3,
+                                          blurRadius: 5,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
-                            ],
+                                    child: Text(
+                                      _summary,
+                                      style: const TextStyle(
+                                          fontSize: 16, color: Colors.white),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 30),
+                                  const Text(
+                                    'Keyframes',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _keyframes.isNotEmpty
+                                      ? SizedBox(
+                                          height: 150,
+                                          child: ListView.builder(
+                                            scrollDirection: Axis.horizontal,
+                                            itemCount: _keyframes.length,
+                                            itemBuilder: (context, index) {
+                                              // Use Image.network to display the keyframes
+                                              return Padding(
+                                                padding: const EdgeInsets.only(
+                                                    right: 10),
+                                                child: ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  child: Image.network(
+                                                    _keyframes[
+                                                        index], // URL from the backend
+                                                    width: 150,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context,
+                                                        error, stackTrace) {
+                                                      return const Icon(
+                                                          Icons.error);
+                                                    },
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        )
+                                      : Center(
+                                          child: Image.asset(
+                                              'assets/placeholder.jpg',
+                                              width: 200), // Placeholder image
+                                        ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : const Center(
+                            child: Text(
+                              'No data yet. Enter a YouTube URL to generate summary and keyframes.',
+                              style: TextStyle(color: Colors.white70),
+                            ),
                           ),
-                        ),
-                      )
-                    : const Center(
-                        child: Text(
-                          'No data yet. Enter a YouTube URL to generate summary and keyframes.',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      ),
               ],
             ),
           ),
