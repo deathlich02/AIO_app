@@ -1,0 +1,40 @@
+import os
+import cv2
+from yt_dlp import YoutubeDL
+from scenedetect import open_video, SceneManager
+from scenedetect.detectors import ContentDetector
+from keyframe_filtering import filter_keyframes
+
+def download_and_process_video(video_file_path, output_dir):
+    # Ensure the output directory exists
+    keyframe_dir = os.path.join(output_dir, 'keyframes')
+    os.makedirs(keyframe_dir, exist_ok=True)
+
+    # Open video and detect scenes
+    video = open_video(video_file_path)
+    scene_manager = SceneManager()
+    scene_manager.add_detector(ContentDetector())
+    scene_manager.detect_scenes(video)
+    scene_list = scene_manager.get_scene_list()
+
+    # Extract keyframes from the middle of each detected scene
+    capture = cv2.VideoCapture(video_file_path)
+    
+    keyframe_filenames = []
+    for i, scene in enumerate(scene_list):
+        start_frame, end_frame = scene[0].get_frames(), scene[1].get_frames()
+        middle_frame = (start_frame + end_frame) // 2
+        capture.set(cv2.CAP_PROP_POS_FRAMES, middle_frame)
+        success, frame = capture.read()
+        if success:
+            keyframe_filename = f'keyframe_{i}.jpg'
+            keyframe_path = os.path.join(keyframe_dir, keyframe_filename)
+            cv2.imwrite(keyframe_path, frame)
+            keyframe_filenames.append(keyframe_filename)
+    
+    capture.release()
+
+    # Apply any filtering logic (e.g., removing similar keyframes)
+    filtered_keyframes = filter_keyframes(keyframe_dir)
+
+    return filtered_keyframes  # Return filenames of filtered keyframes
