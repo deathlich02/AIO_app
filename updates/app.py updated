@@ -1,4 +1,6 @@
-from flask import Flask, request, jsonify, send_file
+import re
+import time
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import yt_dlp
 import moviepy.editor as mp
@@ -7,25 +9,18 @@ import google.generativeai as genai
 import os
 from image_extraction_main import download_and_process_video
 from concurrent.futures import ThreadPoolExecutor
-import time
 
 app = Flask(__name__)
 CORS(app)
-
-# Base URL for serving keyframes
-BASE_URL = 'http://127.0.0.1:5000/keyframes/'  # Update this to your actual server address
 
 @app.route('/process_video', methods=['POST'])
 def process_video():
     data = request.json
     youtube_link = data['url']
 
-    video_file_path = r'/Users/aarushigupta/AIO_app/youtube_backend/temp_video.mp4'
-    audio_file_path = r'/Users/aarushigupta/AIO_app/youtube_backend/temp_audio.wav'
-    keyframes_dir = '/Users/aarushigupta/AIO_app/youtube_backend/keyframes_dir'
-
-    # Create keyframes directory if it doesn't exist
-    os.makedirs(keyframes_dir, exist_ok=True)
+    video_file_path = r'C:\Users\Aditya Vinod\Desktop\vscode\CPI\youtube_backend\temp_video.mp4'
+    audio_file_path = r'C:\Users\Aditya Vinod\Desktop\vscode\CPI\youtube_backend\temp_audio.wav'
+    keyframes_dir = 'keyframes_dir'
 
     # Download YouTube video and process
     process_youtube_link(youtube_link, video_file_path, audio_file_path)
@@ -38,37 +33,35 @@ def process_video():
         keyframes = future_keyframes.result()
 
     os.remove(video_file_path)
-    print("Generated Keyframe Paths:", keyframes)
+
     summary = summarize_text(transcript)
 
-    # Create URLs for keyframes
-    keyframe_urls = [f'http://127.0.0.1:5000/keyframes/{os.path.basename(keyframe)}' for keyframe in keyframes]
-
-    return jsonify({'summary': summary, 'keyframes': keyframe_urls})
+    return jsonify({'summary': summary, 'keyframes': keyframes})
 
 def process_youtube_link(youtube_link, video_file_path, audio_file_path):
-    outtmpl = r'/Users/aarushigupta/AIO_app/youtube_backend/temp_video'  # to avoid .mp4.mp4
+    outtmpl = r'C:\Users\Aditya Vinod\Desktop\vscode\CPI\youtube_backend\temp_video'  #to avoid .mp4.mp4
 
     ydl_opts = {
-        'format': 'best',
+        'format': 'bestvideo+bestaudio/best',
         'outtmpl': outtmpl,
         'postprocessors': [{
-            'key': 'FFmpegVideoConvertor',   # to convert downloaded vid to mp4
+            'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
         }],
     }
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([youtube_link])
-        print("Download complete.")
+        print(f"Download complete. File saved at: {video_file_path}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
-    # Waiting for video to be created to avoid file not available issue
+    # Since the output file is handled by yt-dlp, wait for the final file
     while not os.path.exists(video_file_path):
         print("Waiting for video file to be created...")
-        time.sleep(1)
-
+        time.sleep(1)  # Check every second
+    
     video = mp.VideoFileClip(video_file_path)
     video.audio.write_audiofile(audio_file_path)
     video.close()
@@ -80,20 +73,16 @@ def transcribe_audio(audio_file_path):
     return result["text"]
 
 def summarize_text(transcript):
-    genai.configure(api_key='AIzaSyA4IXURlZnF7yhZlu0zBL8PjOZD4vw-1kY')    
+    with open('key.txt', 'r') as f:
+        GOOGLE_API_KEY = f.read()
+        f.close()
+    genai.configure(api_key = 'AIzaSyA4IXURlZnF7yhZlu0zBL8PjOZD4vw-1kY')
     model = genai.GenerativeModel('gemini-1.5-flash')
-    prompt = f"Write notes on the following lecture:\n{transcript}"
+    prompt = f"Write notes on the following lecture: \\n{transcript}"
     response = model.generate_content(prompt)
-    return response.text
+    cleaned_summary = re.sub(r'\*', ' ', response.text)   #to avoid unnecessary asterisks from genai
+    return cleaned_summary
 
-@app.route('/keyframes/<filename>', methods=['GET'])
-def serve_keyframe(filename):
-    keyframe_path = os.path.join('/Users/aarushigupta/AIO_app/youtube_backend/keyframes_dir/keyframes', filename)
-    print("Serving keyframe from:", keyframe_path)  # Debug: Print the full path of the keyframe
-    if os.path.exists(keyframe_path):
-        return send_file(keyframe_path)
-    else:
-        return jsonify({"error": "Keyframe not found"}), 404
 
 if __name__ == "__main__":
     app.run(debug=True)
