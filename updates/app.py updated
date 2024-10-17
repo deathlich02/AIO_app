@@ -84,7 +84,8 @@ def summarize_text(transcript):
     model = genai.GenerativeModel('gemini-1.5-flash')
     prompt = f"Write notes on the following lecture:\n{transcript}"
     response = model.generate_content(prompt)
-    return response.text
+    cleaned_summary = re.sub(r'\*', ' ', response.text)   #to avoid unnecessary asterisks from genai
+    return cleaned_summary
 
 @app.route('/keyframes/<filename>', methods=['GET'])
 def serve_keyframe(filename):
