@@ -43,4 +43,3 @@ def download_and_process_video(video_file_path, output_dir):
     
     return filtered_keyframes #, video_file_path, info_dict['duration']
 
-# Main function to process video and extract keyframes
